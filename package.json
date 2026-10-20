@@ -14,6 +14,14 @@
     "agent-tools"
   ],
   "author": "mllun",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mllun/dsh-revivecoin.git"
+  },
+  "homepage": "https://github.com/mllun/dsh-revivecoin",
+  "bugs": {
+    "url": "https://github.com/mllun/dsh-revivecoin/issues"
+  },
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
