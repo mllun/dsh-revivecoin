@@ -14,8 +14,8 @@ import { mkdir, mkdtemp, readFile, rm, unlink, utimes, writeFile } from 'node:fs
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCoin, diffCoin, listCoins, restoreCoin } from '../lib/coin.mjs';
-import { coinsDir, logFile } from '../lib/paths.mjs';
+import { createCoin, diffCoin, listCoins, restoreCoin } from '../lib/coin.js';
+import { coinsDir, logFile } from '../lib/paths.js';
 
 const root = await mkdtemp(join(tmpdir(), 'rc-'));
 const dshHome = join(root, 'dsh-home');

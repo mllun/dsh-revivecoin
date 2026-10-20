@@ -29,14 +29,14 @@ import {
   containerPathFor,
   dshHome,
   ensureDir,
-} from './paths.mjs';
-import { logInfo, logWarn, logPath } from './log.mjs';
+} from './paths.js';
+import { logInfo, logWarn, logPath } from './log.js';
 import {
   buildInventory,
   normalizeConfig,
   readInstalledVersion,
   scanEnvironment,
-} from './scan.mjs';
+} from './scan.js';
 
 const MANIFEST_FORMAT = 1;
 /** Readable report cap for lists inside tool results. */
@@ -136,7 +136,7 @@ async function readManifest(coinDir, coinId) {
  * @param {object} rawConfig plugin config from cordis.patch.yml
  * @param {{ sessionId?: string, daily?: boolean }} [options]
  */
-export async function createCoin(rawConfig = {}, options = {}) {
+export async function createCoin(rawConfig = {}, options: any = {}) {
   const cfg = normalizeConfig(rawConfig);
   const daily = options.daily !== false;
   const sessionId = typeof options.sessionId === 'string' && options.sessionId.trim() !== ''

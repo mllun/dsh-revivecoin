@@ -6,7 +6,7 @@
  */
 import { readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { backupsDir, coinsDir, dshHome } from '../lib/paths.mjs';
+import { backupsDir, coinsDir, dshHome } from '../lib/paths.js';
 
 const coinId = '20990101-000000';
 

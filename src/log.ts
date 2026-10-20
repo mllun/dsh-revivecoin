@@ -9,7 +9,7 @@
  */
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { logFile } from './paths.mjs';
+import { logFile } from './paths.js';
 
 /** Rotate the log once it grows past this size. */
 const MAX_BYTES = 4 * 1024 * 1024;

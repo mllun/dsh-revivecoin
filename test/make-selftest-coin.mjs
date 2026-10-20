@@ -9,7 +9,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { coinFilePath, coinsDir, containerPathFor, dshHome } from '../lib/paths.mjs';
+import { coinFilePath, coinsDir, containerPathFor, dshHome } from '../lib/paths.js';
 
 const target = join(dshHome(), 'sessions', '_selftest', 'session-selftest', 'session.v4.jsonl.zstd');
 await mkdir(dirname(target), { recursive: true });

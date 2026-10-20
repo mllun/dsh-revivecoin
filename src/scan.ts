@@ -17,7 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import { dshHome, localConfigFile } from './paths.mjs';
+import { dshHome, localConfigFile } from './paths.js';
 
 /** Directories whose contents are noise for a revival coin. */
 const EXCLUDED_DIRS = new Set([
@@ -334,7 +334,7 @@ export async function buildInventory(config) {
  *   inventory: object, warnings: string[],
  * }>}
  */
-export async function scanEnvironment(config, options = {}) {
+export async function scanEnvironment(config, options: any = {}) {
   const warnings = [...(config.warnings ?? [])];
   const home = dshHome();
   const wanted = typeof options.sessionId === 'string' ? options.sessionId.trim().toLowerCase() : '';

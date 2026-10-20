@@ -217,14 +217,94 @@ files/plugins/plugin-inventory.json            ← 现场生成的插件清单
 
 ---
 
+## 设置 UI（两半配对）
+
+插件包由两半组成，通过**同一个命名空间**配对：
+
+| 半 | 源文件 | 产物 | 在设置里做什麼 |
+| --- | --- | --- | --- |
+| Host | `src/index.ts` | `lib/index.js`（`index.js` 转发） | 导出 `Config` schema，由设置服务投影成表单 |
+| 浏览器 | `src/client/index.tsx` | `lib/client.js` | 向 `plugins.bundle.config` 注册卡片，key = 包名 |
+
+命名空间就是包名 `@local/dsh-revivecoin`：Host 的 `Config` 被投影成 profile entry
+`include:dsh-revivecoin`，浏览器半按同一个 entry 读写配置。两半不需要额外握手。
+
+### Host 半
+
+DSH 0.1.7 之后，设置命名空间不再由 `installSection()` 注册——那个方法连同 `register` 一起被删掉了，
+命名空间改为**从插件导出的 `Config` schema 派生**。所以 Host 半只声明 schema：
+
+```ts
+import z from '@deepseek-ai/schemastery'
+
+export const Config = z.object({
+  maxFileBytes: z.number().step(1).min(1024).default(16 * 1024 * 1024)
+    .description('超过就不复制，只记清单'),
+  // ...
+})
+```
+
+### 浏览器半
+
+卡片不挂 `settings.plugin.item`，而是注册到插件页的 bundle 配置槽：
+
+```ts
+ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
+  name: 'plugins.bundle.config',
+  key: '@local/dsh-revivecoin',   // 与 Host 半命名空间一致
+}, Card))
+```
+
+读写走 `ctx.get('configForms')`——这是 0.1.7 取代 `ctx.settingsScope` 的共享表单服务
+（`webUiSettings` 只是它上面的一层兼容外壳）。卡片订阅快照，用
+`mutate([{ op: 'set', path: ['maxFileBytes'], value }])` 写回，写进的是 profile 里这条插件的 config。
+
+### 打包配置
+
+```json
+{
+  "exports": { "./client": "./lib/client.js" },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["@deepseek-ai/dsh-client-ui-settings"]
+    }
+  }
+}
+```
+
+`lib/client.js` 保持脚本形态：`window.__ModuleLoader__.load({ id: '@local/dsh-revivecoin', factory(require) {...} })`。
+`require` 只出现在 factory 内部，React 从宿主的模块表取，不重复安装。
+
+### 与目标版本（0.2.1-rc.2）的实测差异
+
+| 期望写法 | 实际情况 | 本插件做法 |
+| --- | --- | --- |
+| `ctx.settings.installSection()` 注册命名空间 | 0.2.1-rc.2 的 `settings` 只有 `describe/update/replace/mutate`，没有 `installSection`/`register` | 导出 `Config`，命名空间由服务派生 |
+| `ctx.settingsScope` 读写配置 | 0.1.7 起该服务不再提供，`webUiSettings` 是兼容外壳 | `ctx.get('configForms')` |
+| `applies: 'restart'` 标记需重启字段 | descriptor 的 `applies` 恒为 `live`，没有重启元数据 | 字段都是下一次工具调用即生效，无需重启 |
+| `role('secret')` 标敏感字段 | 支持（schemastery `role()`） | 本插件没有敏感字段，未使用；将来加 token 类字段时用 `.role('secret')` |
+
 ## 开发
 
 ```bash
-node test/smoke.mjs
+npm run build     # tsc: src/*.ts -> lib/*.js；tsc: src/client/index.tsx -> lib/client.js
+npm test          # Host 半与浏览器半的冒烟测试
+```
+
+`npm run build` 需要 `typescript`（devDependency）。本机这份 profile 把它装在 profile 的
+`node_modules` 里，直接用绝对路径跑也行：
+
+```powershell
+$env:TSC_JS = "C:\Users\ASUS\.dsh\profiles\desktop\node_modules\typescript\bin\tsc"
+node scripts/build.mjs
 ```
 
 冒烟测试在临时目录造一个假的 DSH 环境，跑完 create → list → diff → restore 全流程，并检查：
 还原前自动备份、不删用户数据、`confirm` 缺失时拒绝还原、活跃会话被跳过、大文件只记清单。
+`test/client-smoke.mjs` 另外在 VM 里执行 `lib/client.js`，断言工厂 id、槽位 key、卡片在
+有/无配置服务两种情况下都能正确挂载或安全跳过。
 
 想在**真实宿主**上安全试一次还原（不碰任何真实会话或配置）：
 
@@ -238,20 +318,25 @@ node test/drop-selftest.mjs        # 清掉自测币、假会话和它的备份
 
 | 文件 | 职责 |
 | --- | --- |
-| `index.js` | 注册四个工具（参数与输出 schema、给人看的渲染） |
-| `lib/paths.mjs` | 数据目录、安全路径判断、绝对路径 → 币内路径映射 |
-| `lib/scan.mjs` | 五类范围扫描、插件清单生成、配置合并 |
-| `lib/coin.mjs` | create / list / diff / restore 与报告生成 |
-| `lib/log.mjs` | 可读日志与轮转 |
+| `src/index.ts` | Host 半：`Config` schema + 注册四个工具 |
+| `src/client/index.tsx` | 浏览器半：`plugins.bundle.config` 卡片，读写共享表单 |
+| `lib/index.js` · `lib/client.js` | 编译产物（`index.js` 是入口转发 shim） |
+| `src/paths.ts` | 数据目录、安全路径判断、绝对路径 → 币内路径映射 |
+| `src/scan.ts` | 五类范围扫描、插件清单生成、配置合并 |
+| `src/coin.ts` | create / list / diff / restore 与报告生成 |
+| `src/log.ts` | 可读日志与轮转 |
 
 ---
 
 ## 兼容性
 
-- DSH：使用 `tools` 服务的 Host 插件（`inject = ['tools']`）。
+- DSH：0.2.1-rc.2 实测通过；Host 半用 `tools` 服务，浏览器半用 `plugins.bundle.config` 槽位。
 - Node.js ≥ 20（用到 `fs/promises` 与流式哈希）。
 - 平台：Windows / macOS / Linux 均可，安全路径黑名单按平台切换。
-- 无第三方依赖；不写 profile，不改 `package.json`，所有状态都在 `$DSH_HOME/dsh-revivecoin/`。
+- 运行时依赖 `@deepseek-ai/schemastery`（由 Host 提供）。用 `link:` 方式安装时，Node 从包的真实
+  路径解析依赖，需要在包目录里能解析到它——本机用 `node_modules/@deepseek-ai` 的 junction 解决；
+  用 npm/pnpm 正常安装时由包管理器放进包内 `node_modules`。
+- 不写 profile，不改 `package.json`，所有状态都在 `$DSH_HOME/dsh-revivecoin/`。
 
 ---
 
