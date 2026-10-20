@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-revivecoin",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "Revival coins for DeepSeek Harness: package this instance of the assistant (sessions, persona, plugins, plugin data, config) into a restorable coin with daily refresh, diff and one-command restore.",

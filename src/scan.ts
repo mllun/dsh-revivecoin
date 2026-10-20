@@ -53,8 +53,26 @@ const PROFILE_CONFIG_FILES = [
   '.npmrc',
 ];
 
+/**
+ * Unwrap a volatile settings field.
+ *
+ * `.volatile()` makes a field editable in the Plugins page, and the live value
+ * then arrives as a stable reference rather than a plain scalar. Everything
+ * downstream wants the scalar, so read through `.get()` here once.
+ */
+function readSetting(value, fallback?: any): any {
+  if (value && typeof value === 'object' && typeof value.get === 'function') {
+    try {
+      return value.get();
+    } catch {
+      return fallback;
+    }
+  }
+  return value === undefined ? fallback : value;
+}
+
 function clampNumber(value, fallback, min, max) {
-  const n = Number(value);
+  const n = Number(readSetting(value));
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(n)));
 }
@@ -109,11 +127,13 @@ export function normalizeConfig(raw = {}) {
   const patchCfg = raw && typeof raw === 'object' ? raw : {};
   const cfg = { ...localCfg, ...patchCfg };
   const home = dshHome();
-  const profile = typeof cfg.profile === 'string' && cfg.profile.trim() !== ''
-    ? cfg.profile.trim()
+  const profileValue = readSetting(cfg.profile, '');
+  const profile = typeof profileValue === 'string' && profileValue.trim() !== ''
+    ? profileValue.trim()
     : (process.env.DSH_PROFILE && process.env.DSH_PROFILE.trim() !== '' ? process.env.DSH_PROFILE.trim() : 'desktop');
-  const profileDir = typeof cfg.profileDir === 'string' && cfg.profileDir.trim() !== ''
-    ? cfg.profileDir.trim()
+  const profileDirValue = readSetting(cfg.profileDir, '');
+  const profileDir = typeof profileDirValue === 'string' && profileDirValue.trim() !== ''
+    ? profileDirValue.trim()
     : join(home, 'profiles', profile);
 
   const extraPaths = [];

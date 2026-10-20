@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.1 — 2026-10-21
+
+修复设置 UI 在真实页面上不出现、出现后也读不到配置的问题。
+
+- 浏览器半：把所有运行时值移进 `factory`。模块级 `const` 在共享脚本作用域里会变成全局
+  词法绑定，撞名时整个 bundle 抛 `Identifier ... has already been declared`，页面静默丢弃它
+  ——卡片因此从未注册。
+- Host 半：`Config` 的每个字段加 `.volatile()`。`SettingsForms.describe()` 只从 volatile
+  字段构建表单，没有 volatile 字段的 entry 会被整个跳过（不报错，只是设置页没有它）。
+- Host 半：`normalizeConfig` 通过 `.get()` 解包 volatile 字段的稳定引用，数值/字符串才可用。
+- 浏览器半：优先使用设置页交给卡片的 `props.form`，`ctx.get('configForms')` 作为后备。
+- 设置卡片在表单不可达时显示可读诊断（configForms / form prop / entry 列表），不再停在「加载中」。
+- 文档：补 `.volatile()` 与 factory 作用域两条硬规则，更新版本差异表。
+
 ## 1.1.0 — 2026-10-21
 
 设置 UI（两半配对）。

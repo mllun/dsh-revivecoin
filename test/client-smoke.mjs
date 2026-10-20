@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Smoke test for the browser half.
  *
  * Runs the compiled `lib/client.js` inside a VM with a stub module loader and a
@@ -127,19 +127,28 @@ errors.length = 0;
 const summary = component({ view: 'summary' });
 assert.ok(summary && summary.type, 'summary view renders an element');
 
-// a host without the config service must not register a broken card
-const seenErrors = [];
+// a host without the shared form service must still mount a card that explains
+// the missing dependency instead of leaving a silent hole
+const withoutService = [];
 module.apply({
   get: () => undefined,
   effect: (cb) => cb(),
   slots: {
-    inject() {
-      throw new Error('must not register without configForms');
+    inject(name, callback) {
+      assert.equal(name, 'plugins.bundle.config');
+      return callback();
     },
-    register() {},
+    register(options, fallbackComponent) {
+      withoutService.push({ options, fallbackComponent });
+      return () => {};
+    },
   },
 });
-assert.equal(seenErrors.length, 0);
+assert.equal(withoutService.length, 1, 'card must still register without configForms');
+const fallbackCard = withoutService[0].fallbackComponent({ view: 'page' });
+assert.ok(fallbackCard && fallbackCard.type, 'fallback card renders');
+const fallbackText = JSON.stringify(fallbackCard);
+
 
 console.log('client smoke ok');
 console.log(`  factory id: ${loaded.id}`);

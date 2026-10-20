@@ -238,11 +238,19 @@ DSH 0.1.7 之后，设置命名空间不再由 `installSection()` 注册——�
 import z from '@deepseek-ai/schemastery'
 
 export const Config = z.object({
-  maxFileBytes: z.number().step(1).min(1024).default(16 * 1024 * 1024)
+  maxFileBytes: z.number().step(1).min(1024).default(16 * 1024 * 1024).volatile()
     .description('超过就不复制，只记清单'),
   // ...
 })
 ```
+
+**`.volatile()` 不是可选项。** `SettingsForms.describe()` 只从 volatile 字段构建表单
+（`volatileForm()`：没有 volatile 字段的 entry 直接返回 `undefined` 被跳过），
+所以普通字段会让整个插件在设置页消失——不报错，只是没有。这也是语义正确的：
+每个工具调用都会重新读合并后的配置，改动下一次调用就生效。
+
+volatile 字段在运行时以「稳定引用」形式到达，Host 半用 `.get()` 解包后再用
+（`readSetting()`），否则数值字段会变成对象。
 
 ### 浏览器半
 
@@ -255,9 +263,15 @@ ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
 }, Card))
 ```
 
-读写走 `ctx.get('configForms')`——这是 0.1.7 取代 `ctx.settingsScope` 的共享表单服务
-（`webUiSettings` 只是它上面的一层兼容外壳）。卡片订阅快照，用
-`mutate([{ op: 'set', path: ['maxFileBytes'], value }])` 写回，写进的是 profile 里这条插件的 config。
+读写表单有两条通道，卡片按顺序尝试：
+
+1. `props.form`（`ConfigPageForm`）——设置页直接交给这张卡片的本条表单；
+2. `ctx.get('configForms')`——0.1.7 取代 `ctx.settingsScope` 的共享表单服务
+   （`webUiSettings` 只是它上面的一层兼容外壳）。用 `describe().getSnapshot().view.namespaces`
+   找到自己的 entry id，再 `get(entryId)`。
+
+写回统一用 `mutate([{ op: 'set', path: ['maxFileBytes'], value }], revision)`，
+落盘位置是 profile 里这条插件的 `config`。
 
 ### 打包配置
 
@@ -277,12 +291,21 @@ ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
 `lib/client.js` 保持脚本形态：`window.__ModuleLoader__.load({ id: '@local/dsh-revivecoin', factory(require) {...} })`。
 `require` 只出现在 factory 内部，React 从宿主的模块表取，不重复安装。
 
+**所有运行时值都必须写在 factory 里。** bundle 在共享脚本作用域求值，顶层的
+`const styles` / `const loader` 会变成全局词法绑定；第二个声明同名变量的插件
+会让整个 bundle 抛 `Identifier ... has already been declared`，然后页面静默丢掉它。
+只有 `load(...)` 调用和编译后消失的 `interface` 可以留在模块顶层。
+
+> 排查记录：卡片一度完全不出现，就是因为 tsc 把模块级 `const` 原样留在了 bundle 顶层；
+> 移进 factory 后立刻注册成功。设置表单接不上则是 `.volatile()` 缺失导致的。
+
 ### 与目标版本（0.2.1-rc.2）的实测差异
 
 | 期望写法 | 实际情况 | 本插件做法 |
 | --- | --- | --- |
 | `ctx.settings.installSection()` 注册命名空间 | 0.2.1-rc.2 的 `settings` 只有 `describe/update/replace/mutate`，没有 `installSection`/`register` | 导出 `Config`，命名空间由服务派生 |
-| `ctx.settingsScope` 读写配置 | 0.1.7 起该服务不再提供，`webUiSettings` 是兼容外壳 | `ctx.get('configForms')` |
+| `ctx.settingsScope` 读写配置 | 0.1.7 起该服务不再提供，`webUiSettings` 是兼容外壳 | `props.form`，其次 `ctx.get('configForms')` |
+| 普通 `Config` 字段即可出现在设置页 | 只有 `.volatile()` 字段会形成表单；没有 volatile 字段的 entry 被整个跳过 | 所有字段都 `.volatile()` |
 | `applies: 'restart'` 标记需重启字段 | descriptor 的 `applies` 恒为 `live`，没有重启元数据 | 字段都是下一次工具调用即生效，无需重启 |
 | `role('secret')` 标敏感字段 | 支持（schemastery `role()`） | 本插件没有敏感字段，未使用；将来加 token 类字段时用 `.role('secret')` |
 
