@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Revival Coins",
+    "description": "Package this instance of the assistant into a revival coin: session records, persona and presets, plugin inventory and versions, plugin data, and config files. Supports daily refresh, diff, and one-command restore that backs up the current state first."
+  }
+}

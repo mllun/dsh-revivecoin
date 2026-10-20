@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-revivecoin
+      name: '@local/dsh-revivecoin'

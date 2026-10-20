@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Revival coin">
+  <circle cx="32" cy="32" r="27" fill="#fbbf24" stroke="#92400e" stroke-width="3"/>
+  <circle cx="32" cy="32" r="20.5" fill="none" stroke="#fef3c7" stroke-width="2" opacity="0.95"/>
+  <path d="M32 44V23" stroke="#78350f" stroke-width="4.2" stroke-linecap="round"/>
+  <path d="M23.5 31.5L32 23l8.5 8.5" fill="none" stroke="#78350f" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="49" r="2.2" fill="#78350f"/>
+  <circle cx="20.5" cy="18.5" r="1.8" fill="#fff7ed"/>
+  <circle cx="43.5" cy="18.5" r="1.8" fill="#fff7ed"/>
+</svg>
